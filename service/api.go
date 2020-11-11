@@ -10,7 +10,7 @@ import (
 
 type API interface {
 	Login(context.Context, string, string) (*UserToken, error)
-	GetList(context.Context, *UserToken) ([]*Post, *UserToken, error)
+	GetList(context.Context, *UserToken) ([]Post, *UserToken, error)
 	Follow(context.Context, *UserToken, uint) (*UserToken, error)
 	UnFollow(context.Context, *UserToken, uint) (*UserToken, error)
 	AgreeTag(context.Context, *UserToken, uint) (*UserToken, error)
@@ -19,7 +19,9 @@ type aguanAPI struct {
 	Domain string
 }
 
-func newAguanAPI() *aguanAPI {
+var _ API = (*aguanAPI)(nil)
+
+func NewAguanAPI() *aguanAPI {
 	return &aguanAPI{
 		Domain: "https://api.aguan.net",
 	}
