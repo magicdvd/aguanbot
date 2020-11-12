@@ -23,6 +23,7 @@ type RespData struct {
 type Post struct {
 	ID               uint        `json:"id"`
 	AccountID        uint        `json:"accountId"`
+	TagAgreeCount    int         `json:"-"`
 	Content          string      `json:"content"`
 	Title            string      `json:"title"`
 	Status           int         `json:"status"`

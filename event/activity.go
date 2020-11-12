@@ -1,14 +1,28 @@
-package service
+package event
 
 import (
 	"context"
 	"math/rand"
+	"sync"
 	"time"
 
+	"github.com/magicdvd/aguanbot/service"
 	"github.com/whatisfaker/zaptrace/log"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
+
+var (
+	smOnce   sync.Once
+	instance *Activity
+)
+
+func Event() *Activity {
+	smOnce.Do(func() {
+		instance = &Activity{}
+	})
+	return instance
+}
 
 type Activity struct {
 	rd   *rand.Rand
@@ -17,8 +31,9 @@ type Activity struct {
 	log  *log.Factory
 }
 
-func (c *Activity) doVote(ctx context.Context, post *Post) error {
-	bot, err := Mgr().BotManager().Get()
+func (c *Activity) doVote(ctx context.Context, post *service.Post) error {
+	c.log.Trace(ctx).Debug("vote post", zap.Uint("post_id", post.ID))
+	bot, err := service.Mgr().BotManager().Get()
 	if err != nil {
 		c.log.Normal().Error("Do(GetBot)", zap.Error(err))
 		return err
@@ -30,29 +45,30 @@ func (c *Activity) doVote(ctx context.Context, post *Post) error {
 	}
 	idx := c.rd.Intn(l)
 	tag := post.Tags[idx]
-	tk, err := Mgr().API().AgreeTag(ctx, bot.UserToken, tag.ID)
+	tk, err := service.Mgr().API().AgreeTag(ctx, bot.UserToken, tag.ID)
 	if err != nil {
 		c.log.Normal().Error("Do(AgreeTag)", zap.Error(err))
 		return err
 	}
 	bot.UserToken = tk
-	Mgr().BotManager().Return(bot)
+	service.Mgr().BotManager().Return(bot)
 	return nil
 }
 
 func (c *Activity) Do(ctx context.Context) error {
-	bot, err := Mgr().BotManager().Get()
+	c.log.Trace(ctx).Debug("activity start")
+	bot, err := service.Mgr().BotManager().Get()
 	if err != nil {
 		c.log.Normal().Error("Do(GetBot)", zap.Error(err))
 		return err
 	}
-	posts, tk, err := Mgr().API().GetList(ctx, bot.UserToken)
+	posts, tk, err := service.Mgr().API().GetList(ctx, bot.UserToken)
 	if err != nil {
 		c.log.Normal().Error("Do(GetList)", zap.Error(err))
 		return err
 	}
 	bot.UserToken = tk
-	Mgr().BotManager().Return(bot)
+	service.Mgr().BotManager().Return(bot)
 	l := len(posts)
 	if l == 0 {
 		c.log.Normal().Warn("Do(Exit)", zap.String("reason", "no posts"))
@@ -63,7 +79,7 @@ func (c *Activity) Do(ctx context.Context) error {
 	if max > l {
 		max = l
 	}
-	doPosts := make([]Post, 0)
+	doPosts := make([]service.Post, 0)
 	for max > 0 {
 		idx := c.rd.Intn(l)
 		post := posts[idx]
@@ -91,7 +107,7 @@ func (c *Activity) Do(ctx context.Context) error {
 				c.log.Normal().Error("Do(doVote)", zap.Error(err))
 				return err
 			}
-			userCount := Mgr().BotManager().CalcBotForPost(v.TagAgreeCount, tcc)
+			userCount := service.Mgr().BotManager().CalcBotForPost(v.TagAgreeCount, tcc)
 			sendCount := make([]int, 0)
 			for userCount > 0 {
 				ic := 1
