@@ -29,7 +29,7 @@ type userConfig struct {
 }
 
 func newBot(phone string, password string) (*Bot, error) {
-	ctx, cancel := context.WithTimeout(context.TODO(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.TODO(), 30*time.Second)
 	defer cancel()
 	u, err := Mgr().API().Login(ctx, phone, password)
 	if err != nil {
@@ -104,8 +104,6 @@ func (c *BotManager) Get() (*Bot, error) {
 	}
 	idx := rd.Intn(l)
 	userPhone := actUsers[idx]
-	actUsers = append(actUsers[:idx], actUsers[idx+1:]...)
-	c.cache.Set(CKAct, actUsers, cache.NoExpiration)
 	bots, ok := c.cache.Get(CKBotDict)
 	if !ok {
 		return nil, errNoKey
@@ -143,12 +141,16 @@ func (c *BotManager) CalcBotForPost(agree int, totalAgree int) int {
 		if c.botTotal == 1 {
 			return 1
 		}
-		return rand.Intn(c.botTotal-1) + 1
+		r := rand.Intn(c.botTotal-1) + 1
+		return r
 	}
 	t := float64(c.botTotal) * float64(agree) / float64(totalAgree)
 	ct := int(t)
 	if ct < 1 {
 		ct = 1
+	}
+	if (ct + 8) < c.botTotal {
+		ct += 8
 	}
 	return ct
 }

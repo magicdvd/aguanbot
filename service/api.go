@@ -6,6 +6,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+
+	"github.com/whatisfaker/zaptrace/log"
 )
 
 type API interface {
@@ -17,13 +19,15 @@ type API interface {
 }
 type aguanAPI struct {
 	Domain string
+	log    *log.Factory
 }
 
 var _ API = (*aguanAPI)(nil)
 
-func NewAguanAPI() *aguanAPI {
+func NewAguanAPI(log *log.Factory) *aguanAPI {
 	return &aguanAPI{
 		Domain: "https://api.aguan.net",
+		log:    log,
 	}
 }
 
@@ -47,7 +51,6 @@ func (c *aguanAPI) Login(ctx context.Context, user string, password string) (*Us
 	if err != nil {
 		return nil, err
 	}
-
 	req.Header.Add("Content-Type", "application/json")
 	res, err := client.Do(req)
 	if err != nil {
@@ -60,7 +63,7 @@ func (c *aguanAPI) Login(ctx context.Context, user string, password string) (*Us
 	}
 	token := refreshToken(res, nil)
 	if token == nil {
-		return nil, fmt.Errorf("incorrect login token (%s)", string(body))
+		return nil, fmt.Errorf("incorrect login token (%s) (%s)", string(body), user)
 	}
 	return token, nil
 }
