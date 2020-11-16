@@ -28,7 +28,7 @@ func NewActivity(postMax int, dur time.Duration, log *log.Factory) *Activity {
 }
 
 func (c *Activity) doVote(ctx context.Context, post *service.Post) error {
-	c.log.Normal().Debug("do vote start", zap.Uint("post_id", post.ID))
+	//c.log.Normal().Debug("do vote start", zap.Uint("post_id", post.ID))
 	bot, err := service.Mgr().BotManager().Get()
 	if err != nil {
 		c.log.Normal().Error("doVote(GetBot)", zap.Error(err))
@@ -52,7 +52,7 @@ func (c *Activity) doVote(ctx context.Context, post *service.Post) error {
 		bot.UserToken = tk
 		service.Mgr().BotManager().Return(bot)
 	}
-	c.log.Normal().Debug("do vote end", zap.Uint("post_id", post.ID), zap.Uint("tag_id", tag.ID), zap.String("user", bot.Phone))
+	c.log.Normal().Debug("do vote complete", zap.Uint("post_id", post.ID), zap.Uint("tag_id", tag.ID), zap.String("user", bot.Phone))
 	return nil
 }
 
@@ -120,19 +120,20 @@ func (c *Activity) Do(pctx context.Context) error {
 				sendCount = append(sendCount, ic)
 				tmp -= ic
 			}
-			c.log.Normal().Debug("vote next", zap.Uint("post_id", post.ID), zap.Int("user_count", userCount), zap.Duration("duration", c.dur))
-			start := time.Now()
 			waitInterval := c.dur / time.Duration(userCount)
+			c.log.Normal().Debug("vote next", zap.Uint("post_id", post.ID), zap.Int("user_count", userCount), zap.Duration("average_wait", waitInterval))
+			start := time.Now()
 			for i, voteCount := range sendCount {
 				for voteCount > 0 {
 					voteCount--
 					t := waitInterval
 					wait := c.rd.Int63n(int64(t))
-					c.log.Normal().Debug("vote next wait", zap.Uint("post_id", post.ID), zap.Int("user_index", i), zap.Duration("wait", time.Duration(wait)))
+					wait1 := time.Until(start.Add(time.Duration(i)*t + time.Duration(wait)))
+					c.log.Normal().Debug("vote next wait", zap.Uint("post_id", post.ID), zap.Int("user_index", i), zap.Duration("wait", time.Duration(wait1)))
 					select {
 					case <-ctx.Done():
 						return ctx.Err()
-					case <-time.After(time.Duration(wait)):
+					case <-time.After(wait1):
 					}
 					c.log.Normal().Debug("vote follow", zap.Uint("post_id", post.ID))
 					err := c.doVote(ctx, &post)

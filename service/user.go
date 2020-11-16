@@ -144,8 +144,11 @@ func (c *BotManager) CalcBotForPost(agree int, totalAgree int) int {
 		r := rand.Intn(c.botTotal-1) + 1
 		return r
 	}
-	t := float64(c.botTotal) * float64(agree) / float64(totalAgree)
+	t := 2 * float64(c.botTotal) * float64(agree) / float64(totalAgree)
 	ct := int(t)
+	if ct > c.botTotal {
+		ct = ct / 2
+	}
 	if ct < 1 {
 		ct = 1
 	}
